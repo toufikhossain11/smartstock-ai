@@ -38,7 +38,7 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("http://localhost:5000/api/dashboard");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard`);
       if (!res.ok) {
         throw new Error("Failed to load dashboard metrics.");
       }

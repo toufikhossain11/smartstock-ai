@@ -50,7 +50,7 @@ export default function CustomersPage() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/customers");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/customers`);
       const data = await res.json();
       if (data.success) {
         setCustomers(data.customers);
@@ -72,8 +72,8 @@ export default function CustomersPage() {
     try {
       const customerId = editingCustomer?._id;
       const url = customerId 
-        ? `http://localhost:5000/api/customers/${customerId}`
-        : "http://localhost:5000/api/customers";
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/customers/${customerId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/customers`;
       
       const method = customerId ? "PUT" : "POST";
 
@@ -109,7 +109,7 @@ export default function CustomersPage() {
     const customerId = customerToDelete._id;
     
     try {
-      const res = await fetch(`http://localhost:5000/api/customers/${customerId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/customers/${customerId}`, {
         method: "DELETE"
       });
       const data = await res.json();

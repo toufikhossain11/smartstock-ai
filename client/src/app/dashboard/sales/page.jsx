@@ -36,13 +36,13 @@ export default function SalesPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const prodRes = await fetch("http://localhost:5000/api/products");
+      const prodRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`);
       const prodData = await prodRes.json();
       if (prodData.success) {
         setProducts(prodData.products);
       }
 
-      const salesRes = await fetch("http://localhost:5000/api/sales");
+      const salesRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sales`);
       const salesData = await salesRes.json();
       if (salesData.success) {
         setSales(salesData.sales);
@@ -74,7 +74,7 @@ export default function SalesPage() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/sales", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/sales`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

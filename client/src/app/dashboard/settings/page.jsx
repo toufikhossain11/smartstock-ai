@@ -75,7 +75,7 @@ export default function SettingsPage() {
 
       // Option B: If updating extra custom fields (like phone) on MongoDB
       if (session?.user?.id) {
-        await fetch(`http://localhost:5000/api/users/${session.user.id}`, {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/users/${session.user.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

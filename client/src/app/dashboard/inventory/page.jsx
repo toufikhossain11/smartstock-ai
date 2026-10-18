@@ -43,13 +43,13 @@ export default function InventoryPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const prodRes = await fetch("http://localhost:5000/api/products");
+            const prodRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`);
             const prodData = await prodRes.json();
             if (prodData.success) {
                 setProducts(prodData.products);
             }
 
-            const invRes = await fetch("http://localhost:5000/api/inventory");
+            const invRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/inventory`);
             const invData = await invRes.json();
             if (invData.success) {
                 setInventoryHistory(invData.inventory);
@@ -75,7 +75,7 @@ export default function InventoryPage() {
 
         try {
             const endpoint = activeTab === "Stock In" ? "stock-in" : "stock-out";
-            const res = await fetch(`http://localhost:5000/api/inventory/${endpoint}`, {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/inventory/${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

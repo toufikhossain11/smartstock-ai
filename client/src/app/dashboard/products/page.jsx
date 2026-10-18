@@ -53,7 +53,7 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/products");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products`);
       const data = await res.json();
       if (data.success) {
         setProducts(data.products);
@@ -75,8 +75,8 @@ export default function ProductsPage() {
     try {
       const productId = editingProduct?._id;
       const url = productId 
-        ? `http://localhost:5000/api/products/${productId}`
-        : "http://localhost:5000/api/products";
+        ? `${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/api/products`;
       
       const method = productId ? "PUT" : "POST";
 
@@ -112,7 +112,7 @@ export default function ProductsPage() {
     const productId = productToDelete._id;
     
     try {
-      const res = await fetch(`http://localhost:5000/api/products/${productId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/products/${productId}`, {
         method: "DELETE"
       });
       const data = await res.json();

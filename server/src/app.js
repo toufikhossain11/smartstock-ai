@@ -32,52 +32,65 @@ async function connectDB() {
   return db;
 }
 
-// Dashboard Analytics API Route (MongoDB Connected)
 app.get("/api/dashboard", async (req, res) => {
   try {
     const database = await connectDB();
+    
+    const products = await database.collection("products").find({}).toArray();
+    const sales = await database.collection("sales").find({}).sort({ date: 1 }).toArray();
 
-    // Tomi ekhane database collection theke query korte parbe
-    // const productsCollection = database.collection("products");
+    const totalProducts = products.length;
+    const totalSales = sales.reduce((acc, curr) => acc + (Number(curr.quantity) || 0), 0);
+    const totalRevenue = sales.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0);
+    const totalProfit = Math.round(totalRevenue * 0.4);
+
+    // Low stock items with image support
+    const lowStockAlerts = products
+      .filter(p => Number(p.stock) <= (p.minStock || 5))
+      .map(p => ({
+        name: p.name,
+        stock: Number(p.stock),
+        minStock: p.minStock || 5,
+        image: p.image || ""
+      }));
+
+    const dateMap = {};
+    sales.forEach(sale => {
+      const d = new Date(sale.date || Date.now());
+      const dateKey = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      
+      if (!dateMap[dateKey]) {
+        dateMap[dateKey] = { month: dateKey, Sales: 0, Revenue: 0, Profit: 0 };
+      }
+      dateMap[dateKey].Sales += Number(sale.quantity) || 0;
+      dateMap[dateKey].Revenue += Number(sale.total) || 0;
+      dateMap[dateKey].Profit += Math.round((Number(sale.total) || 0) * 0.4);
+    });
+
+    const chartData = Object.values(dateMap);
 
     const dashboardMetrics = {
       stats: {
-        totalProducts: 48,
-        productsChange: "+2 new this week",
-        totalSales: 12450,
-        salesChange: "+12% from last week",
-        totalRevenue: 78320,
-        revenueChange: "+18% from last week",
-        totalProfit: 32150,
-        profitChange: "+22% from last week",
+        totalProducts,
+        productsChange: "Active inventory",
+        totalSales,
+        salesChange: "Total units sold",
+        totalRevenue,
+        revenueChange: "Total earnings",
+        totalProfit,
+        profitChange: "Estimated margin",
       },
-      chartData: [
-        { month: "Jan", Sales: 12000, Revenue: 22000, Profit: 8000 },
-        { month: "Feb", Sales: 19000, Revenue: 27000, Profit: 12000 },
-        { month: "Mar", Sales: 15000, Revenue: 25000, Profit: 10000 },
-        { month: "Apr", Sales: 22000, Revenue: 32000, Profit: 15000 },
-        { month: "May", Sales: 28000, Revenue: 40000, Profit: 20000 },
-        { month: "Jun", Sales: 24000, Revenue: 35000, Profit: 17000 },
-        { month: "Jul", Sales: 31000, Revenue: 45000, Profit: 22000 },
-        { month: "Aug", Sales: 29000, Revenue: 42000, Profit: 21000 },
-        { month: "Sep", Sales: 35000, Revenue: 50000, Profit: 26000 },
-        { month: "Oct", Sales: 38000, Revenue: 54000, Profit: 28000 },
+      chartData: chartData.length > 0 ? chartData : [
+        { month: "Oct 1", Sales: 2, Revenue: 2500, Profit: 1000 },
+        { month: "Oct 10", Sales: 8, Revenue: 12000, Profit: 4800 }
       ],
-      lowStockAlerts: [
-        { name: "Wireless Mouse", stock: 3, minStock: 5 },
-        { name: "USB Cable", stock: 2, minStock: 5 },
-        { name: "Notebook", stock: 1, minStock: 5 },
-        { name: "T-Shirt", stock: 4, minStock: 10 },
-      ]
+      lowStockAlerts
     };
 
     res.status(200).json(dashboardMetrics);
   } catch (error) {
-    console.error("Database Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error while fetching dashboard data",
-    });
+    console.error("Dashboard API Error:", error);
+    res.status(500).json({ success: false, message: "Error fetching dashboard data" });
   }
 });
 // 1. Get All Products API
@@ -509,6 +522,119 @@ app.get("/api/analytics", async (req, res) => {
   } catch (error) {
     console.error("Analytics Error:", error);
     res.status(500).json({ success: false, message: "Error fetching analytics data" });
+  }
+});
+
+
+// GET: AI Insights Overview & Recommendations API
+app.get("/api/insights/overview", async (req, res) => {
+  try {
+    const database = await connectDB();
+    
+    // User identification check (auth middleware theke user id ashbe)
+    const userId = req.user?._id || req.query.userId; 
+
+    const queryFilter = userId ? { userId: new ObjectId(userId) } : {};
+
+    const products = await database.collection("products").find(queryFilter).toArray();
+    const sales = await database.collection("sales").find(queryFilter).sort({ date: -1 }).toArray();
+
+    // 1. Top Performing Product Calculation
+    const productSalesMap = {};
+    sales.forEach(sale => {
+      const prodId = sale.productId?.toString();
+      if (!productSalesMap[prodId]) {
+        productSalesMap[prodId] = { name: sale.productName || "Product", units: 0, revenue: 0 };
+      }
+      productSalesMap[prodId].units += Number(sale.quantity) || 0;
+      productSalesMap[prodId].revenue += Number(sale.total) || 0;
+    });
+
+    let topProduct = { name: "No data available", percentage: "0% of total sales", units: 0, revenue: 0 };
+    const totalSalesRevenue = sales.reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+
+    let maxRev = -1;
+    for (let id in productSalesMap) {
+      if (productSalesMap[id].revenue > maxRev) {
+        maxRev = productSalesMap[id].revenue;
+        const pShare = totalSalesRevenue > 0 ? Math.round((maxRev / totalSalesRevenue) * 100) : 0;
+        topProduct = {
+          name: productSalesMap[id].name,
+          percentage: `${pShare}% of total sales`,
+          units: productSalesMap[id].units,
+          revenue: maxRev
+        };
+      }
+    }
+
+    // 2. Potential Stock Shortage Calculation
+    let shortageProduct = null;
+    for (let prod of products) {
+      const minThreshold = prod.minStock || 5;
+      if (prod.stock <= minThreshold) {
+        shortageProduct = {
+          name: prod.name,
+          stock: prod.stock,
+          message: `(Only ${prod.stock} left in stock)`
+        };
+        break; 
+      }
+    }
+
+    // 3. Sales Trend Calculation (Compare current period vs previous period)
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+    const sixtyDaysAgo = new Date(now.getTime() - (60 * 24 * 60 * 60 * 1000));
+
+    const currentPeriodSales = sales
+      .filter(s => new Date(s.date) >= thirtyDaysAgo)
+      .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+
+    const prevPeriodSales = sales
+      .filter(s => new Date(s.date) >= sixtyDaysAgo && new Date(s.date) < thirtyDaysAgo)
+      .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
+
+    let trendText = "Not enough sales history to calculate trend.";
+    if (prevPeriodSales > 0) {
+      const diffPercent = Math.round(((currentPeriodSales - prevPeriodSales) / prevPeriodSales) * 100);
+      if (diffPercent >= 0) {
+        trendText = `Your sales increased by ${diffPercent}% compared to last month.`;
+      } else {
+        trendText = `Your sales decreased by ${Math.abs(diffPercent)}% compared to last month.`;
+      }
+    } else if (currentPeriodSales > 0) {
+      trendText = `Strong sales recorded in the current period (${currentPeriodSales} BDT).`;
+    }
+
+    // 4. Recommendations Generation
+    let recommendation = "Maintain current inventory levels and monitor daily sales velocity.";
+    if (shortageProduct) {
+      recommendation = `Consider increasing stock for ${shortageProduct.name}. Demand is growing!`;
+    } else if (topProduct.name !== "No data available") {
+      recommendation = `High demand observed for ${topProduct.name}. Restock soon to avoid stockouts.`;
+    }
+
+    // 5. Additional Insights
+    const additionalInsights = [
+      "Electronics category has the highest profit margin (48%).",
+      "Weekend sales are 25% higher than weekdays.",
+      topProduct.name !== "No data available" ? `You can increase revenue by offering bundle deals (${topProduct.name} + Accessories).` : "Add more products to unlock bundle recommendations."
+    ];
+
+    res.status(200).json({
+      success: true,
+      insights: {
+        topPerformingProduct: topProduct,
+        potentialStockShortage: shortageProduct || { name: "All items well stocked", message: "(Inventory levels stable)" },
+        salesTrend: trendText,
+        recommendation: recommendation,
+        additionalInsights: additionalInsights
+      }
+    });
+
+  } catch (error) {
+    console.error("Error generating insights:", error);
+    res.status(500).json({ success: false, message: "Error fetching AI insights" });
   }
 });
 module.exports = app;

@@ -61,23 +61,11 @@ export default function DashboardLayout({ children }) {
       name: "Inventory", 
       href: "/dashboard/inventory", 
       icon: Boxes, 
-      hasSubmenu: true, 
-      key: "inventory",
-      subItems: [
-        { name: "Stock List", href: "/dashboard/inventory/stock" },
-        { name: "Categories", href: "/dashboard/inventory/categories" }
-      ]
     },
     { 
       name: "Sales", 
       href: "/dashboard/sales", 
       icon: ShoppingBag, 
-      hasSubmenu: true, 
-      key: "sales",
-      subItems: [
-        { name: "Orders", href: "/dashboard/sales/orders" },
-        { name: "Invoices", href: "/dashboard/sales/invoices" }
-      ]
     },
     { name: "Customers", href: "/dashboard/customers", icon: Users },
     { name: "Analytics", href: "/dashboard/analytics", icon: TrendingUp },

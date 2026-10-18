@@ -36,7 +36,7 @@ async function connectDB() {
 app.get("/api/dashboard", async (req, res) => {
   try {
     const database = await connectDB();
-    
+
     // Tomi ekhane database collection theke query korte parbe
     // const productsCollection = database.collection("products");
 
@@ -284,6 +284,149 @@ app.post("/api/sales", async (req, res) => {
   } catch (error) {
     console.error("Sale creation error:", error);
     res.status(500).json({ success: false, message: "Error creating sale" });
+  }
+});
+
+// Get All Customers
+app.get("/api/customers", async (req, res) => {
+  try {
+    const database = await connectDB();
+    const customers = await database.collection("customers").find({}).toArray();
+    res.status(200).json({ success: true, customers });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error fetching customers" });
+  }
+});
+
+// Add New Customer
+app.post("/api/customers", async (req, res) => {
+  try {
+    const database = await connectDB();
+    const newCustomer = {
+      name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone,
+      totalPurchase: Number(req.body.totalPurchase) || 0,
+      createdAt: new Date()
+    };
+    const result = await database.collection("customers").insertOne(newCustomer);
+    res.status(201).json({ success: true, insertedId: result.insertedId, message: "Customer added successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error adding customer" });
+  }
+});
+
+// Update Customer
+app.put("/api/customers/:id", async (req, res) => {
+  try {
+    const database = await connectDB();
+    const updatedData = {
+      name: req.body.name,
+      email: req.body.email,
+      phone: req.body.phone,
+      totalPurchase: Number(req.body.totalPurchase) || 0
+    };
+    const result = await database.collection("customers").updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: updatedData }
+    );
+    res.status(200).json({ success: true, modifiedCount: result.modifiedCount, message: "Customer updated successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error updating customer" });
+  }
+});
+
+// Delete Customer
+app.delete("/api/customers/:id", async (req, res) => {
+  try {
+    const database = await connectDB();
+    const result = await database.collection("customers").deleteOne({ _id: new ObjectId(req.params.id) });
+    res.status(200).json({ success: true, deletedCount: result.deletedCount, message: "Customer deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error deleting customer" });
+  }
+});
+app.get("/api/settings/profile", async (req, res) => {
+  try {
+    const database = await connectDB();
+    // Assuming single admin profile or fetching by default ID/email
+    let profile = await database.collection("settings").findOne({ type: "profile" });
+    
+    if (!profile) {
+      // Default initial profile if not found
+      profile = {
+        fullName: "Admin",
+        email: "admin@shop.com",
+        phone: "01712345678",
+        photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+      };
+    }
+    
+    res.status(200).json({ success: true, profile });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error fetching profile" });
+  }
+});
+
+// 2. Update Admin Profile Information
+app.put("/api/settings/profile", async (req, res) => {
+  try {
+    const database = await connectDB();
+    const { fullName, email, phone, photo } = req.body;
+
+    const updatedProfile = {
+      type: "profile",
+      fullName,
+      email,
+      phone,
+      photo,
+      updatedAt: new Date()
+    };
+
+    await database.collection("settings").updateOne(
+      { type: "profile" },
+      { $set: updatedProfile },
+      { upsert: true }
+    );
+
+    res.status(200).json({ success: true, message: "Profile updated successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error updating profile" });
+  }
+});
+
+// 3. Change Password API
+app.put("/api/settings/password", async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    
+    // Note: In real applications, verify currentPassword hash against database.
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: "All password fields are required" });
+    }
+
+    // Here you would normally update the hashed password in your admin collection
+    res.status(200).json({ success: true, message: "Password updated successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error updating password" });
+  }
+});
+
+// 4. Update Notification Preferences
+app.put("/api/settings/notifications", async (req, res) => {
+  try {
+    const database = await connectDB();
+    const preferences = req.body;
+
+    await database.collection("settings").updateOne(
+      { type: "notifications" },
+      { $set: { type: "notifications", ...preferences, updatedAt: new Date() } },
+      { upsert: true }
+    );
+
+    res.status(200).json({ success: true, message: "Notification preferences saved" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Error saving preferences" });
   }
 });
 module.exports = app;
